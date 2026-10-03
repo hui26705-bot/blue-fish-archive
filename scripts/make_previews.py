@@ -11,12 +11,20 @@ Animated GIF/APNG originals stay animated: the grid tier becomes an animated
 480px WebP, so the wall no longer downloads the multi-MB original just to show
 a moving card. The original file is left untouched for download/copy.
 
+MP4 originals take the same animated route: ffmpeg extracts a short preview
+strip (12 frames) as animated WebP for the grid tier; the lightbox streams
+the original MP4 directly, so no full-size `large/` copy is generated.
+Runners provide ffmpeg (GitHub-hosted ubuntu); without it video files fail
+loudly instead of silently vanishing from the wall.
+
 Only previews that are missing or older than their source are regenerated,
 so this is safe to run on every sync.
 """
 
 from __future__ import annotations
 
+import shutil
+import subprocess
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -29,6 +37,10 @@ PREVIEW_DIR = ROOT / "previews"
 LARGE_DIR = ROOT / "large"
 SOURCE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".apng"}
 ANIMATED_EXTENSIONS = {".gif", ".apng"}
+VIDEO_EXTENSIONS = {".mp4"}
+# 视频预览条：12 帧约 2 秒循环，够认出是动图即可。
+VIDEO_PREVIEW_FRAMES = 12
+VIDEO_PREVIEW_FPS = 6
 GRID_MAX_DIMENSION = 480
 GRID_QUALITY = 80
 # 动画档必须保住帧数和节奏: 动图一旦卡顿就失去意义,所以 grid 档靠降分辨率省字节,
@@ -96,6 +108,37 @@ def _to_animated_webp(
     print(f"Generated {target.relative_to(ROOT).as_posix()}")
 
 
+def _ffmpeg_exe() -> str | None:
+    """ffmpeg 二进制位置：先找系统 PATH，runner 上没有则用 imageio-ffmpeg 自带的静态二进制。"""
+    direct = shutil.which("ffmpeg")
+    if direct:
+        return direct
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        return None
+
+
+def _to_video_preview(path: Path, target: Path, quality: int, max_dimension: int | None) -> None:
+    """MP4 → 动画 WebP 预览条（只做 grid 档，灯箱直接播原片）。"""
+    ffmpeg = _ffmpeg_exe()
+    if ffmpeg is None:
+        raise RuntimeError(f"ffmpeg 缺失（系统与 imageio-ffmpeg 都没有），无法为视频生成预览: {path.name}")
+    scale = f"scale={max_dimension}:-2" if max_dimension is not None else "scale=-2:-2"
+    cmd = [
+        ffmpeg, "-y", "-v", "error", "-i", str(path),
+        "-vf", f"fps={VIDEO_PREVIEW_FPS},{scale}",
+        "-vframes", str(VIDEO_PREVIEW_FRAMES),
+        "-c:v", "libwebp", "-quality", str(quality), "-loop", "0",
+        str(target),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0 or not target.is_file():
+        raise RuntimeError(f"视频预览生成失败 {path.name}: {result.stderr.strip()[:300]}")
+    print(f"Generated {target.relative_to(ROOT).as_posix()}")
+
+
 def main() -> int:
     if not SOURCE_DIR.is_dir():
         print(f"Sticker source directory not found: {SOURCE_DIR}", file=sys.stderr)
@@ -107,12 +150,24 @@ def main() -> int:
     generated = 0
     skipped = 0
     for path in sorted(SOURCE_DIR.iterdir()):
-        if not path.is_file() or path.suffix.lower() not in SOURCE_EXTENSIONS:
+        if not path.is_file():
+            continue
+        suffix = path.suffix.lower()
+        is_video = suffix in VIDEO_EXTENSIONS
+        if not is_video and suffix not in SOURCE_EXTENSIONS:
             continue
 
         preview = PREVIEW_DIR / f"{path.stem}.webp"
         large = LARGE_DIR / f"{path.stem}.webp"
-        animated = path.suffix.lower() in ANIMATED_EXTENSIONS
+        if is_video:
+            # 视频只做 grid 动画预览条，灯箱直接播原 mp4，不占 large 档。
+            if _needs_update(preview, path):
+                _to_video_preview(path, preview, GRID_QUALITY, GRID_MAX_DIMENSION)
+                generated += 1
+            else:
+                skipped += 1
+            continue
+        animated = suffix in ANIMATED_EXTENSIONS
         encode = _to_animated_webp if animated else _to_webp
         grid_quality = ANIMATED_GRID_QUALITY if animated else GRID_QUALITY
 

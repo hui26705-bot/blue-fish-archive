@@ -19,7 +19,8 @@ PREVIEW_DIR = ROOT / "previews"
 LARGE_DIR = ROOT / "large"
 MANIFEST_PATH = ROOT / "stickers" / "manifest.json"
 SELF_MADE_PATH = ROOT / "stickers" / "self-made.json"
-SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".apng"}
+SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".apng", ".mp4"}
+# MP4 dimensions come from its generated animated preview (same aspect), no ffprobe needed.
 
 
 def _image_dimensions(path: Path) -> tuple[int, int] | None:
