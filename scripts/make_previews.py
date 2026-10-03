@@ -108,11 +108,23 @@ def _to_animated_webp(
     print(f"Generated {target.relative_to(ROOT).as_posix()}")
 
 
+def _ffmpeg_exe() -> str | None:
+    """ffmpeg 二进制位置：先找系统 PATH，runner 上没有则用 imageio-ffmpeg 自带的静态二进制。"""
+    direct = shutil.which("ffmpeg")
+    if direct:
+        return direct
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        return None
+
+
 def _to_video_preview(path: Path, target: Path, quality: int, max_dimension: int | None) -> None:
     """MP4 → 动画 WebP 预览条（只做 grid 档，灯箱直接播原片）。"""
-    ffmpeg = shutil.which("ffmpeg")
+    ffmpeg = _ffmpeg_exe()
     if ffmpeg is None:
-        raise RuntimeError(f"ffmpeg 缺失，无法为视频生成预览: {path.name}")
+        raise RuntimeError(f"ffmpeg 缺失（系统与 imageio-ffmpeg 都没有），无法为视频生成预览: {path.name}")
     scale = f"scale={max_dimension}:-2" if max_dimension is not None else "scale=-2:-2"
     cmd = [
         ffmpeg, "-y", "-v", "error", "-i", str(path),
