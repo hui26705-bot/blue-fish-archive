@@ -5,7 +5,11 @@
 
   **鲸鱼娘 DeepSeek 同人表情包展示站**
 
+  <a href="https://fisharchive.cc/"><strong>访问网站</strong></a>
+  ·
   <a href="https://github.com/EDMOK/blue-fish-archive">GitHub</a>
+  ·
+  <a href="#加入-qq-群">加入 QQ 群</a>
   ·
   <a href="#版权与来源">版权与来源</a>
   ·
@@ -21,6 +25,8 @@
 ## 项目简介
 
 围绕鲸鱼娘 DeepSeek 的同人表情包收集与展示项目。
+
+在线访问：**<https://fisharchive.cc/>**
 
 页面采用卡通贴纸风格，提供自然瀑布流浏览、大图预览、复制图片和下载原图功能。
 
@@ -45,38 +51,15 @@
 
 原始文件不加水印、不改格式、不降低分辨率。
 
-## 内容管理
+## 加入 QQ 群
 
-表情包文件统一存放在 [`media/`](media/) 目录中。
+群号：**1041665197**
 
-支持格式：
+扫码加入：
 
-```text
-PNG · JPG · JPEG · GIF · WebP · APNG
-```
+![QQ 群二维码](QRcode.png)
 
-向 GitHub 仓库上传或删除图片后，GitHub Actions 会自动为 `media/` 里的图片生成 WebP 缩略图（`previews/`，页面瀑布流展示用）并更新 `stickers/manifest.json`。连接 Vercel 或 Cloudflare Pages 后，内容会随仓库更新自动重新部署；下载和复制仍保留 `media/` 下的原始文件，不降质。
-
-站长自己制作的表情，把文件名写进 [`stickers/self-made.json`](stickers/self-made.json)，`sync_stickers.py` 会给对应条目加上 `selfMade: true`，页面就在卡片右上角显示「自作」、预览里显示「站长自作」。清单里写了 `media/` 中不存在的文件会直接报错。
-
-```text
-修改「media/」目录
-        ↓
-生成 WebP 缩略图 + 同步 manifest.json
-        ↓
-自动部署
-```
-
-### 改样式或脚本时
-
-`styles.css`、`app.js`、`about.js`、`qr-modal.js` 的文件名里没有内容哈希，而 Cloudflare 会把浏览器缓存拉到 31 天。改了这些文件就要把 HTML 里的 `?v=` 一起换成新值（例如 `?v=20261002`），否则老访客会一直用旧文件，出现「新 HTML + 旧 CSS」的排版错乱。
-
-CI 会检查这件事：资源内容变了但 `?v=` 没动、或者引用的本地 css/js 干脆没带版本号，都会直接失败。本地可以先跑：
-
-```bash
-python scripts/check_asset_versions.py                # 只检查有没有漏掉版本号
-python scripts/check_asset_versions.py --base HEAD~1  # 顺带对比上一个提交
-```
+也可以访问项目的 [GitHub 仓库](https://github.com/EDMOK/blue-fish-archive) 查看源码、提交内容或反馈问题。
 
 ## 版权与来源
 
